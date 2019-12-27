@@ -1,0 +1,485 @@
+diff --git a/common/cmd_autoscript.c b/common/cmd_autoscript.c
+index 53f8e8311a04cc0dc98509339e82f4beece9bef4..f9ab1d9a13b15e7956d4acb518932ed17242a26c 100644
+--- a/common/cmd_autoscript.c
++++ b/common/cmd_autoscript.c
+@@ -53,7 +53,7 @@ int
+ autoscript (ulong addr)
+ {
+ 	ulong len;
+-	image_header_t *hdr = (image_header_t *)addr;
++	image_header_t *hdr;
+ 	ulong *data;
+ 	char *cmd;
+ 	int rcode = 0;
+@@ -61,33 +61,47 @@ autoscript (ulong addr)
+ 
+ 	verify = getenv_verify ();
+ 
+-	if (!image_check_magic (hdr)) {
+-		puts ("Bad magic number\n");
+-		return 1;
+-	}
++	switch (gen_image_get_format ((void *)addr)) {
++	case IMAGE_FORMAT_LEGACY:
++		hdr = (image_header_t *)addr;
+ 
+-	if (!image_check_hcrc (hdr)) {
+-		puts ("Bad header crc\n");
+-		return 1;
+-	}
++		if (!image_check_magic (hdr)) {
++			puts ("Bad magic number\n");
++			return 1;
++		}
+ 
+-	if (verify) {
+-		if (!image_check_dcrc (hdr)) {
+-			puts ("Bad data crc\n");
++		if (!image_check_hcrc (hdr)) {
++			puts ("Bad header crc\n");
+ 			return 1;
+ 		}
+-	}
+ 
+-	if (!image_check_type (hdr, IH_TYPE_SCRIPT)) {
+-		puts ("Bad image type\n");
+-		return 1;
+-	}
++		if (verify) {
++			if (!image_check_dcrc (hdr)) {
++				puts ("Bad data crc\n");
++				return 1;
++			}
++		}
++
++		if (!image_check_type (hdr, IH_TYPE_SCRIPT)) {
++			puts ("Bad image type\n");
++			return 1;
++		}
+ 
+-	/* get length of script */
+-	data = (ulong *)image_get_data (hdr);
++		/* get length of script */
++		data = (ulong *)image_get_data (hdr);
+ 
+-	if ((len = image_to_cpu (*data)) == 0) {
+-		puts ("Empty Script\n");
++		if ((len = image_to_cpu (*data)) == 0) {
++			puts ("Empty Script\n");
++			return 1;
++		}
++		break;
++#if defined(CONFIG_FIT)
++	case IMAGE_FORMAT_FIT:
++		fit_unsupported ("autoscript");
++		return 1;
++#endif
++	default:
++		puts ("Wrong image format for autoscript\n");
+ 		return 1;
+ 	}
+ 
+diff --git a/common/cmd_doc.c b/common/cmd_doc.c
+index 70bbd31ddee29ab2e4a5b20ca4ee7a9a84c2ae4b..3358b04622ed960796e87d9d1c62e3766f6c8bae 100644
+--- a/common/cmd_doc.c
++++ b/common/cmd_doc.c
+@@ -261,17 +261,29 @@ int do_docboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+ 	}
+ 	show_boot_progress (38);
+ 
+-	hdr = (image_header_t *)addr;
++	switch (gen_image_get_format ((void *)addr)) {
++	case IMAGE_FORMAT_LEGACY:
++		hdr = (image_header_t *)addr;
+ 
+-	if (image_check_magic (hdr)) {
++		if (image_check_magic (hdr)) {
+ 
+-		image_print_contents (hdr);
++			image_print_contents (hdr);
+ 
+-		cnt = image_get_image_size (hdr);
+-		cnt -= SECTORSIZE;
+-	} else {
+-		puts ("\n** Bad Magic Number **\n");
+-		show_boot_progress (-39);
++			cnt = image_get_image_size (hdr);
++			cnt -= SECTORSIZE;
++		} else {
++			puts ("\n** Bad Magic Number **\n");
++			show_boot_progress (-39);
++			return 1;
++		}
++		break;
++#if defined(CONFIG_FIT)
++	case IMAGE_FORMAT_FIT:
++		fit_unsupported ("docboot");
++		return 1;
++#endif
++	default:
++		puts ("** Unknown image type\n");
+ 		return 1;
+ 	}
+ 	show_boot_progress (39);
+diff --git a/common/cmd_fpga.c b/common/cmd_fpga.c
+index 4030d04f8dc0fcdab691966d487c2025f78426c0..10199f59d464c7cb9365e0cd5022f48acf906321 100644
+--- a/common/cmd_fpga.c
++++ b/common/cmd_fpga.c
+@@ -216,19 +216,31 @@ int do_fpga (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
+ 		break;
+ 
+ 	case FPGA_LOADMK:
+-		{
+-			image_header_t header;
+-			image_header_t *hdr = &header;
+-			ulong	data;
+-
+-			memmove (&header, (char *)fpga_data, image_get_header_size ());
+-			if (!image_check_magic (hdr)) {
+-				puts ("Bad Magic Number\n");
+-				return 1;
++		switch (gen_image_get_format (fpga_data)) {
++		case IMAGE_FORMAT_LEGACY:
++			{
++				image_header_t *hdr = (image_header_t *)fpga_data;
++				ulong	data;
++
++				if (!image_check_magic (hdr)) {
++					puts ("Bad Magic Number\n");
++					return 1;
++				}
++				data = (ulong)image_get_data (hdr);
++				data_size = image_get_data_size (hdr);
++				rc = fpga_load (dev, (void *)data, data_size);
+ 			}
+-			data = ((ulong)fpga_data + image_get_header_size ());
+-			data_size = image_get_data_size (hdr);
+-			rc = fpga_load (dev, (void *)data, data_size);
++			break;
++#if defined(CONFIG_FIT)
++		case IMAGE_FORMAT_FIT:
++			fit_unsupported ("fpga");
++			rc = FPGA_FAIL;
++			break;
++#endif
++		default:
++			puts ("** Unknown image type\n");
++			rc = FPGA_FAIL;
++			break;
+ 		}
+ 		break;
+ 
+diff --git a/common/cmd_ide.c b/common/cmd_ide.c
+index a3966435d65f07ed51667533e416ba42e405ee1c..bef04db4f663e282fceed4c9da9367cea02467db 100644
+--- a/common/cmd_ide.c
++++ b/common/cmd_ide.c
+@@ -446,25 +446,38 @@ int do_diskboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+ 	}
+ 	show_boot_progress (48);
+ 
+-	hdr = (image_header_t *)addr;
++	switch (gen_image_get_format ((void *)addr)) {
++	case IMAGE_FORMAT_LEGACY:
++		hdr = (image_header_t *)addr;
+ 
+-	if (!image_check_magic (hdr)) {
+-		printf("\n** Bad Magic Number **\n");
+-		show_boot_progress (-49);
+-		return 1;
+-	}
+-	show_boot_progress (49);
++		if (!image_check_magic (hdr)) {
++			printf("\n** Bad Magic Number **\n");
++			show_boot_progress (-49);
++			return 1;
++		}
++		show_boot_progress (49);
++
++		if (!image_check_hcrc (hdr)) {
++			puts ("\n** Bad Header Checksum **\n");
++			show_boot_progress (-50);
++			return 1;
++		}
++		show_boot_progress (50);
+ 
+-	if (!image_check_hcrc (hdr)) {
+-		puts ("\n** Bad Header Checksum **\n");
+-		show_boot_progress (-50);
++		image_print_contents (hdr);
++
++		cnt = image_get_image_size (hdr);
++		break;
++#if defined(CONFIG_FIT)
++	case IMAGE_FORMAT_FIT:
++		fit_unsupported ("diskboot");
++		return 1;
++#endif
++	default:
++		puts ("** Unknown image type\n");
+ 		return 1;
+ 	}
+-	show_boot_progress (50);
+-
+-	image_print_contents (hdr);
+ 
+-	cnt = image_get_image_size (hdr);
+ 	cnt += info.blksz - 1;
+ 	cnt /= info.blksz;
+ 	cnt -= 1;
+diff --git a/common/cmd_nand.c b/common/cmd_nand.c
+index 7fd6667a7eba891327ec82c9a84aec077b0ecf50..b099afeca0ed035dc69c5c1a7ba7208ac805aece 100644
+--- a/common/cmd_nand.c
++++ b/common/cmd_nand.c
+@@ -512,18 +512,32 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
+ 	}
+ 	show_boot_progress (56);
+ 
+-	hdr = (image_header_t *) addr;
++	switch (gen_image_get_format ((void *)addr)) {
++	case IMAGE_FORMAT_LEGACY:
++		hdr = (image_header_t *)addr;
++
++		if (!image_check_magic (hdr)) {
++			printf("\n** Bad Magic Number 0x%x **\n",
++					image_get_magic (hdr));
++			show_boot_progress (-57);
++			return 1;
++		}
++		show_boot_progress (57);
++
++		image_print_contents (hdr);
+ 
+-	if (!image_check_magic (hdr)) {
+-		printf("\n** Bad Magic Number 0x%x **\n", image_get_magic (hdr));
+-		show_boot_progress (-57);
++		cnt = image_get_image_size (hdr);
++		break;
++#if defined(CONFIG_FIT)
++	case IMAGE_FORMAT_FIT:
++		fit_unsupported ("nand_load_image");
++		return 1;
++#endif
++	default:
++		puts ("** Unknown image type\n");
+ 		return 1;
+ 	}
+-	show_boot_progress (57);
+-
+-	image_print_contents (hdr);
+ 
+-	cnt = image_get_image_size (hdr);
+ 	if (jffs2) {
+ 		nand_read_options_t opts;
+ 		memset(&opts, 0, sizeof(opts));
+@@ -980,17 +994,30 @@ int do_nandboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+ 	}
+ 	show_boot_progress (56);
+ 
+-	hdr = (image_header_t *)addr;
++	switch (gen_image_get_format ((void *)addr)) {
++	case IMAGE_FORMAT_LEGACY:
++		hdr = (image_header_t *)addr;
+ 
+-	if (image_check_magic (hdr)) {
++		if (image_check_magic (hdr)) {
+ 
+-		image_print_contents (hdr);
++			image_print_contents (hdr);
+ 
+-		cnt = image_get_image_size (hdr);
+-		cnt -= SECTORSIZE;
+-	} else {
+-		printf ("\n** Bad Magic Number 0x%x **\n", image_get_magic (hdr));
+-		show_boot_progress (-57);
++			cnt = image_get_image_size (hdr);
++			cnt -= SECTORSIZE;
++		} else {
++			printf ("\n** Bad Magic Number 0x%x **\n",
++					image_get_magic (hdr));
++			show_boot_progress (-57);
++			return 1;
++		}
++		break;
++#if defined(CONFIG_FIT)
++	case IMAGE_FORMAT_FIT:
++		fit_unsupported ("nboot");
++		return 1;
++#endif
++	default:
++		puts ("** Unknown image type\n");
+ 		return 1;
+ 	}
+ 	show_boot_progress (57);
+diff --git a/common/cmd_scsi.c b/common/cmd_scsi.c
+index 5aae7ece5ebfe6c649c7f9abf949579f1e215383..42b3072984375d7792857ca5fb848694d16d07ab 100644
+--- a/common/cmd_scsi.c
++++ b/common/cmd_scsi.c
+@@ -273,20 +273,33 @@ int do_scsiboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+ 		return 1;
+ 	}
+ 
+-	hdr = (image_header_t *)addr;
++	switch (gen_image_get_format ((void *)addr)) {
++	case IMAGE_FORMAT_LEGACY:
++		hdr = (image_header_t *)addr;
+ 
+-	if (!image_check_magic (hdr)) {
+-		printf("\n** Bad Magic Number **\n");
+-		return 1;
+-	}
++		if (!image_check_magic (hdr)) {
++			printf("\n** Bad Magic Number **\n");
++			return 1;
++		}
+ 
+-	if (!image_check_hcrc (hdr)) {
+-		puts ("\n** Bad Header Checksum **\n");
++		if (!image_check_hcrc (hdr)) {
++			puts ("\n** Bad Header Checksum **\n");
++			return 1;
++		}
++
++		image_print_contents (hdr);
++		cnt = image_get_image_size (hdr);
++		break;
++#if defined(CONFIG_FIT)
++	case IMAGE_FORMAT_FIT:
++		fit_unsupported ("scsi");
++		return 1;
++#endif
++	default:
++		puts ("** Unknown image type\n");
+ 		return 1;
+ 	}
+ 
+-	image_print_contents (hdr);
+-	cnt = image_get_image_size (hdr);
+ 	cnt += info.blksz - 1;
+ 	cnt /= info.blksz;
+ 	cnt -= 1;
+diff --git a/common/cmd_ximg.c b/common/cmd_ximg.c
+index 7d83dc35bc89afd48712509ea928a26a74f08021..4dadc3709d6615c73d7b16363567cc709da3f3a5 100644
+--- a/common/cmd_ximg.c
++++ b/common/cmd_ximg.c
+@@ -56,63 +56,76 @@ do_imgextract(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
+ 		dest = simple_strtoul(argv[3], NULL, 16);
+ 	}
+ 
+-	printf("## Copying from image at %08lx ...\n", addr);
+ 
+-	hdr = (image_header_t *)addr;
++	switch (gen_image_get_format ((void *)addr)) {
++	case IMAGE_FORMAT_LEGACY:
+ 
+-	if (!image_check_magic (hdr)) {
+-		printf("Bad Magic Number\n");
+-		return 1;
+-	}
+-
+-	if (!image_check_hcrc (hdr)) {
+-		printf("Bad Header Checksum\n");
+-		return 1;
+-	}
+-#ifdef DEBUG
+-	image_print_contents (hdr);
+-#endif
++		printf("## Copying from legacy image at %08lx ...\n", addr);
++		hdr = (image_header_t *)addr;
++		if (!image_check_magic (hdr)) {
++			printf("Bad Magic Number\n");
++			return 1;
++		}
+ 
+-	if (!image_check_type (hdr, IH_TYPE_MULTI)) {
+-		printf("Wrong Image Type for %s command\n", cmdtp->name);
+-		return 1;
+-	}
++		if (!image_check_hcrc (hdr)) {
++			printf("Bad Header Checksum\n");
++			return 1;
++		}
++	#ifdef DEBUG
++		image_print_contents (hdr);
++	#endif
+ 
+-	if (image_get_comp (hdr) != IH_COMP_NONE) {
+-		printf("Wrong Compression Type for %s command\n", cmdtp->name);
+-		return 1;
+-	}
++		if (!image_check_type (hdr, IH_TYPE_MULTI)) {
++			printf("Wrong Image Type for %s command\n",
++					cmdtp->name);
++			return 1;
++		}
+ 
+-	if (verify) {
+-		printf("   Verifying Checksum ... ");
+-		if (!image_check_dcrc (hdr)) {
+-			printf("Bad Data CRC\n");
++		if (image_get_comp (hdr) != IH_COMP_NONE) {
++			printf("Wrong Compression Type for %s command\n",
++					cmdtp->name);
+ 			return 1;
+ 		}
+-		printf("OK\n");
+-	}
+ 
+-	data = image_get_data (hdr);
+-	len_ptr = (ulong *) data;
+-
+-	data += 4;		/* terminator */
+-	for (i = 0; len_ptr[i]; ++i) {
+-		data += 4;
+-		if (argc > 2 && part > i) {
+-			u_long tail;
+-			len = image_to_cpu (len_ptr[i]);
+-			tail = len % 4;
+-			data += len;
+-			if (tail) {
+-				data += 4 - tail;
++		if (verify) {
++			printf("   Verifying Checksum ... ");
++			if (!image_check_dcrc (hdr)) {
++				printf("Bad Data CRC\n");
++				return 1;
+ 			}
++			printf("OK\n");
+ 		}
+-	}
+-	if (argc > 2 && part >= i) {
+-		printf("Bad Image Part\n");
++
++		data = image_get_data (hdr);
++		len_ptr = (ulong *) data;
++
++		data += 4;		/* terminator */
++		for (i = 0; len_ptr[i]; ++i) {
++			data += 4;
++			if (argc > 2 && part > i) {
++				u_long tail;
++				len = image_to_cpu (len_ptr[i]);
++				tail = len % 4;
++				data += len;
++				if (tail) {
++					data += 4 - tail;
++				}
++			}
++		}
++		if (argc > 2 && part >= i) {
++			printf("Bad Image Part\n");
++			return 1;
++		}
++		len = image_to_cpu (len_ptr[part]);
++#if defined(CONFIG_FIT)
++	case IMAGE_FORMAT_FIT:
++		fit_unsupported ("imxtract");
++		return 1;
++#endif
++	default:
++		puts ("Invalid image type for imxtract\n");
+ 		return 1;
+ 	}
+-	len = image_to_cpu (len_ptr[part]);
+ 
+ 	if (argc > 3) {
+ 		memcpy((char *) dest, (char *) data, len);

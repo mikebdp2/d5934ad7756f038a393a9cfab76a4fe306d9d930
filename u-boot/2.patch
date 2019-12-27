@@ -1,0 +1,903 @@
+diff --git a/board/cray/L1/L1.c b/board/cray/L1/L1.c
+index 8e6d74eef5ae1e2ef1f9a24d3ff5f582f75e38d1..c00acc87aeaacd661b47a7dcf19f454175017aab 100644
+--- a/board/cray/L1/L1.c
++++ b/board/cray/L1/L1.c
+@@ -140,6 +140,13 @@ int misc_init_r (void)
+ 	char bootcmd[32];
+ 
+ 	hdr = (image_header_t *) (CFG_MONITOR_BASE - image_get_header_size ());
++#if defined(CONFIG_FIT)
++	if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++		puts ("Non legacy image format not supported\n");
++		return -1;
++	}
++#endif
++
+ 	timestamp = (time_t)image_get_time (hdr);
+ 	to_tm (timestamp, &tm);
+ 	printf ("Welcome to U-Boot on Cray L1. Compiled %4d-%02d-%02d  %2d:%02d:%02d (UTC)\n", tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+diff --git a/board/esd/common/auto_update.c b/board/esd/common/auto_update.c
+index cb8087bee831bc6dd7ddd2f49470df8df981e16e..976707dfe65edb99c2ce9375165a178ea3bddb23 100644
+--- a/board/esd/common/auto_update.c
++++ b/board/esd/common/auto_update.c
+@@ -91,6 +91,12 @@ int au_check_cksum_valid(int i, long nbytes)
+ 	image_header_t *hdr;
+ 
+ 	hdr = (image_header_t *)LOAD_ADDR;
++#if defined(CONFIG_FIT)
++	if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++		puts ("Non legacy image format not supported\n");
++		return -1;
++	}
++#endif
+ 
+ 	if ((au_image[i].type == AU_FIRMWARE) &&
+ 	    (au_image[i].size != image_get_data_size (hdr))) {
+@@ -118,6 +124,13 @@ int au_check_header_valid(int i, long nbytes)
+ 	unsigned long checksum;
+ 
+ 	hdr = (image_header_t *)LOAD_ADDR;
++#if defined(CONFIG_FIT)
++	if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++		puts ("Non legacy image format not supported\n");
++		return -1;
++	}
++#endif
++
+ 	/* check the easy ones first */
+ #undef CHECK_VALID_DEBUG
+ #ifdef CHECK_VALID_DEBUG
+@@ -183,6 +196,12 @@ int au_do_update(int i, long sz)
+ #endif
+ 
+ 	hdr = (image_header_t *)LOAD_ADDR;
++#if defined(CONFIG_FIT)
++	if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++		puts ("Non legacy image format not supported\n");
++		return -1;
++	}
++#endif
+ 
+ 	switch (au_image[i].type) {
+ 	case AU_SCRIPT:
+diff --git a/board/mcc200/auto_update.c b/board/mcc200/auto_update.c
+index 8b520c859942f9a95e6cd71b72b2d5307cc20dbe..fcae35aaf8f227614d55b9d0958032a30dabc569 100644
+--- a/board/mcc200/auto_update.c
++++ b/board/mcc200/auto_update.c
+@@ -143,6 +143,12 @@ int au_check_cksum_valid(int idx, long nbytes)
+ 	image_header_t *hdr;
+ 
+ 	hdr = (image_header_t *)LOAD_ADDR;
++#if defined(CONFIG_FIT)
++	if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++		puts ("Non legacy image format not supported\n");
++		return -1;
++	}
++#endif
+ 
+ 	if (nbytes != image_get_image_size (hdr)) {
+ 		printf ("Image %s bad total SIZE\n", aufile[idx]);
+@@ -162,6 +168,13 @@ int au_check_header_valid(int idx, long nbytes)
+ 	unsigned long checksum, fsize;
+ 
+ 	hdr = (image_header_t *)LOAD_ADDR;
++#if defined(CONFIG_FIT)
++	if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++		puts ("Non legacy image format not supported\n");
++		return -1;
++	}
++#endif
++
+ 	/* check the easy ones first */
+ #undef CHECK_VALID_DEBUG
+ #ifdef CHECK_VALID_DEBUG
+@@ -233,6 +246,12 @@ int au_do_update(int idx, long sz)
+ 	uint nbytes;
+ 
+ 	hdr = (image_header_t *)LOAD_ADDR;
++#if defined(CONFIG_FIT)
++	if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++		puts ("Non legacy image format not supported\n");
++		return -1;
++	}
++#endif
+ 
+ 	/* execute a script */
+ 	if (image_check_type (hdr, IH_TYPE_SCRIPT)) {
+diff --git a/board/mpl/common/common_util.c b/board/mpl/common/common_util.c
+index b171ca51736b427f5102dcca68b7dd62da3081f9..fffd25c2be2d968ee212fd7824bf172ea9c0ce41 100644
+--- a/board/mpl/common/common_util.c
++++ b/board/mpl/common/common_util.c
+@@ -181,6 +181,13 @@ mpl_prg_image(uchar *ld_addr)
+ 	image_header_t *hdr = (image_header_t *)ld_addr;
+ 	int rc;
+ 
++#if defined(CONFIG_FIT)
++	if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++		puts ("Non legacy image format not supported\n");
++		return -1;
++	}
++#endif
++
+ 	if (!image_check_magic (hdr)) {
+ 		puts("Bad Magic Number\n");
+ 		return 1;
+diff --git a/board/siemens/common/fpga.c b/board/siemens/common/fpga.c
+index 9d719460dc0f99ea444c8bcaff509d71d96407bc..a9a6dfed69a7ea36ac193be833ded081d18681e6 100644
+--- a/board/siemens/common/fpga.c
++++ b/board/siemens/common/fpga.c
+@@ -137,6 +137,13 @@ static int fpga_load (fpga_t* fpga, ulong addr, int checkall)
+     char msg[32];
+     int verify, i;
+ 
++#if defined(CONFIG_FIT)
++    if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++	puts ("Non legacy image format not supported\n");
++	return -1;
++    }
++#endif
++
+     /*
+      * Check the image header and data of the net-list
+      */
+@@ -333,6 +340,13 @@ int fpga_init (void)
+ 	}
+ 
+ 	hdr = (image_header_t *)addr;
++#if defined(CONFIG_FIT)
++	if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++	   puts ("Non legacy image format not supported\n");
++	   return -1;
++	}
++#endif
++
+ 	if ((new_id = fpga_get_version(fpga, image_get_name (hdr))) == -1)
+ 	    return 1;
+ 
+diff --git a/board/trab/auto_update.c b/board/trab/auto_update.c
+index bd9ee0c0110e69ea80ab21ca703703ca06ba182d..8f6753592b6fb08f6543bfdcdc03386f4cd22681 100644
+--- a/board/trab/auto_update.c
++++ b/board/trab/auto_update.c
+@@ -211,6 +211,12 @@ au_check_cksum_valid(int idx, long nbytes)
+ 	image_header_t *hdr;
+ 
+ 	hdr = (image_header_t *)LOAD_ADDR;
++#if defined(CONFIG_FIT)
++	if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++		puts ("Non legacy image format not supported\n");
++		return -1;
++	}
++#endif
+ 
+ 	if (nbytes != image_get_image_size (hdr))
+ 	{
+@@ -234,6 +240,13 @@ au_check_header_valid(int idx, long nbytes)
+ 	unsigned char buf[4];
+ 
+ 	hdr = (image_header_t *)LOAD_ADDR;
++#if defined(CONFIG_FIT)
++	if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++		puts ("Non legacy image format not supported\n");
++		return -1;
++	}
++#endif
++
+ 	/* check the easy ones first */
+ #undef CHECK_VALID_DEBUG
+ #ifdef CHECK_VALID_DEBUG
+@@ -327,6 +340,12 @@ au_do_update(int idx, long sz)
+ 	uint nbytes;
+ 
+ 	hdr = (image_header_t *)LOAD_ADDR;
++#if defined(CONFIG_FIT)
++	if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++		puts ("Non legacy image format not supported\n");
++		return -1;
++	}
++#endif
+ 
+ 	/* disable the power switch */
+ 	*CPLD_VFD_BK |= POWER_OFF;
+@@ -417,6 +436,13 @@ au_update_eeprom(int idx)
+ 	}
+ 
+ 	hdr = (image_header_t *)LOAD_ADDR;
++#if defined(CONFIG_FIT)
++	if (gen_image_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
++		puts ("Non legacy image format not supported\n");
++		return -1;
++	}
++#endif
++
+ 	/* write the time field into EEPROM */
+ 	off = auee_off[idx].time;
+ 	val = image_get_time (hdr);
+diff --git a/include/image.h b/include/image.h
+index 502d35a3ef2afc3958af4ac27c619c8a884519ba..2f4b67d445314f633219502656b1828f090da83b 100644
+--- a/include/image.h
++++ b/include/image.h
+@@ -44,6 +44,9 @@
+ #define CONFIG_FIT		1
+ #define CONFIG_OF_LIBFDT	1
+ 
++/* enable fit_format_error(), fit_format_warning() */
++#define CONFIG_FIT_VERBOSE	1
++
+ #if defined(CONFIG_FIT) && !defined(CONFIG_OF_LIBFDT)
+ #error "CONFIG_OF_LIBFDT not enabled, required by CONFIG_FIT!"
+ #endif
+diff --git a/lib_arm/bootm.c b/lib_arm/bootm.c
+index 31c2d672257577914f37b1cf3d70d286ec6cbfb7..4849c8ab0b512702a2d88f3efc3f63420bae5588 100644
+--- a/lib_arm/bootm.c
++++ b/lib_arm/bootm.c
+@@ -56,24 +56,38 @@ static void setup_end_tag (bd_t *bd);
+ static void setup_videolfb_tag (gd_t *gd);
+ # endif
+ 
+-
+ static struct tag *params;
+ #endif /* CONFIG_SETUP_MEMORY_TAGS || CONFIG_CMDLINE_TAG || CONFIG_INITRD_TAG */
+ 
++extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
++
+ void do_bootm_linux (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[],
+-		     image_header_t *hdr, int verify)
++		     bootm_headers_t *images, int verify)
+ {
+-	ulong initrd_start, initrd_end;
+-	void (*theKernel)(int zero, int arch, uint params);
+-	bd_t *bd = gd->bd;
+-	int machid = bd->bi_arch_number;
+-	char *s;
++	ulong	initrd_start, initrd_end;
++	ulong	ep = 0;
++	bd_t	*bd = gd->bd;
++	char	*s;
++	int	machid = bd->bi_arch_number;
++	void	(*theKernel)(int zero, int arch, uint params);
+ 
+ #ifdef CONFIG_CMDLINE_TAG
+ 	char *commandline = getenv ("bootargs");
+ #endif
+ 
+-	theKernel = (void (*)(int, int, uint))image_get_ep (hdr);
++	/* find kernel entry point */
++	if (images->legacy_hdr_valid) {
++		ep = image_get_ep (images->legacy_hdr_os);
++#if defined(CONFIG_FIT)
++	} else if (images->fit_uname_os) {
++		fit_unsupported_reset ("ARM linux bootm");
++		do_reset (cmdtp, flag, argc, argv);
++#endif
++	} else {
++		puts ("Could not find kernel entry point!\n");
++		do_reset (cmdtp, flag, argc, argv);
++	}
++	theKernel = (void (*)(int, int, uint))ep;
+ 
+ 	s = getenv ("machid");
+ 	if (s) {
+@@ -81,7 +95,7 @@ void do_bootm_linux (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[],
+ 		printf ("Using machid 0x%x from environment\n", machid);
+ 	}
+ 
+-	get_ramdisk (cmdtp, flag, argc, argv, hdr, verify,
++	get_ramdisk (cmdtp, flag, argc, argv, images, verify,
+ 			IH_ARCH_ARM, &initrd_start, &initrd_end);
+ 
+ 	show_boot_progress (15);
+diff --git a/lib_avr32/bootm.c b/lib_avr32/bootm.c
+index a934cae9d98e84820bbe04ea5269bf1853a4bbbe..c449394e6b7979f687618411a9eec53448154154 100644
+--- a/lib_avr32/bootm.c
++++ b/lib_avr32/bootm.c
+@@ -34,6 +34,8 @@ DECLARE_GLOBAL_DATA_PTR;
+ /* CPU-specific hook to allow flushing of caches, etc. */
+ extern void prepare_to_boot(void);
+ 
++extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
++
+ static struct tag *setup_start_tag(struct tag *params)
+ {
+ 	params->hdr.tag = ATAG_CORE;
+@@ -172,17 +174,29 @@ static void setup_end_tag(struct tag *params)
+ }
+ 
+ void do_bootm_linux(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[],
+-		    image_header_t *hdr, int verify)
++		    bootm_headers_t *images, int verify)
+ {
+-	ulong initrd_start, initrd_end;
+-
+-	void (*theKernel)(int magic, void *tagtable);
+-	struct tag *params, *params_start;
+-	char *commandline = getenv("bootargs");
+-
+-	theKernel = (void *)image_get_ep (hdr);
++	ulong	initrd_start, initrd_end;
++	ulong	ep = 0;
++	void	(*theKernel)(int magic, void *tagtable);
++	struct	tag *params, *params_start;
++	char	*commandline = getenv("bootargs");
++
++	/* find kernel entry point */
++	if (images->legacy_hdr_valid) {
++		ep = image_get_ep (images->legacy_hdr_os);
++#if defined(CONFIG_FIT)
++	} else if (images->fit_uname_os) {
++		fit_unsupported_reset ("AVR32 linux bootm");
++		do_reset (cmdtp, flag, argc, argv);
++#endif
++	} else {
++		puts ("Could not find kernel entry point!\n");
++		do_reset (cmdtp, flag, argc, argv);
++	}
++	theKernel = (void *)ep;
+ 
+-	get_ramdisk (cmdtp, flag, argc, argv, hdr, verify,
++	get_ramdisk (cmdtp, flag, argc, argv, images, verify,
+ 			IH_ARCH_AVR32, &initrd_start, &initrd_end);
+ 
+ 	show_boot_progress (15);
+diff --git a/lib_blackfin/bootm.c b/lib_blackfin/bootm.c
+index 6299415b11eb96b2e3c295d74928b3b4126cd410..8010e5d64f426b8bfb9e0d708095f5ae4fa3e658 100644
+--- a/lib_blackfin/bootm.c
++++ b/lib_blackfin/bootm.c
+@@ -47,16 +47,30 @@ extern void flush_data_cache(void);
+ static char *make_command_line(void);
+ 
+ void do_bootm_linux(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[],
+-		    image_header_t *hdr, int verify)
++		    bootm_headers_t *images, int verify)
+ {
+-	int (*appl) (char *cmdline);
+-	char *cmdline;
++	int	(*appl) (char *cmdline);
++	char	*cmdline;
++	ulong	ep = 0;
+ 
+ #ifdef SHARED_RESOURCES
+ 	swap_to(FLASH);
+ #endif
+ 
+-	appl = (int (*)(char *))image_get_ep (hdr);
++	/* find kernel entry point */
++	if (images->legacy_hdr_valid) {
++		ep = image_get_ep (images->legacy_hdr_os);
++#if defined(CONFIG_FIT)
++	} else if (images->fit_uname_os) {
++		fit_unsupported_reset ("AVR32 linux bootm");
++		do_reset (cmdtp, flag, argc, argv);
++#endif
++	} else {
++		puts ("Could not find kernel entry point!\n");
++		do_reset (cmdtp, flag, argc, argv);
++	}
++	appl = (int (*)(char *))ep;
++
+ 	printf("Starting Kernel at = %x\n", appl);
+ 	cmdline = make_command_line();
+ 	if (icache_status()) {
+diff --git a/lib_i386/bootm.c b/lib_i386/bootm.c
+index ab6c2a967616c8d210be87a7ebdcd671508e163d..3a6497c77a24c950a82dc01686478aa346059ac2 100644
+--- a/lib_i386/bootm.c
++++ b/lib_i386/bootm.c
+@@ -32,22 +32,35 @@
+ extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
+ 
+ void do_bootm_linux(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[],
+-		image_header_t *hdr, int verify)
++		bootm_headers_t *images, int verify)
+ {
+-	void *base_ptr;
++	void		*base_ptr;
++	ulong		os_data, os_len;
++	ulong		initrd_start, initrd_end;
++	ulong		ep;
++	image_header_t	*hdr;
+ 
+-	ulong os_data, os_len;
+-	ulong initrd_start, initrd_end;
+-
+-	get_ramdisk (cmdtp, flag, argc, argv, hdr, verify,
++	get_ramdisk (cmdtp, flag, argc, argv, images, verify,
+ 			IH_ARCH_I386, &initrd_start, &initrd_end);
+ 
+-	/* if multi-part image, we need to advance base ptr */
+-	if (image_check_type (hdr, IH_TYPE_MULTI)) {
+-		image_multi_getimg (hdr, 0, &os_data, &os_len);
++	if (images->legacy_hdr_valid) {
++		hdr = images->legacy_hdr_os;
++		if (image_check_type (hdr, IH_TYPE_MULTI)) {
++			/* if multi-part image, we need to get first subimage */
++			image_multi_getimg (hdr, 0, &os_data, &os_len);
++		} else {
++			/* otherwise get image data */
++			os_data = image_get_data (hdr);
++			os_len = image_get_data_size (hdr);
++		}
++#if defined(CONFIG_FIT)
++	} else if (images->fit_uname_os) {
++		fit_unsupported_reset ("I386 linux bootm");
++		do_reset (cmdtp, flag, argc, argv);
++#endif
+ 	} else {
+-		os_data = image_get_data (hdr);
+-		os_len = image_get_data_size (hdr);
++		puts ("Could not find kernel image!\n");
++		do_reset (cmdtp, flag, argc, argv);
+ 	}
+ 
+ 	base_ptr = load_zimage ((void*)os_data, os_len,
+diff --git a/lib_m68k/bootm.c b/lib_m68k/bootm.c
+index ac04da08a5c1d3494b0d2041749cbf4eff6da7f9..ce8be05e4c5b5989614adf3985cc3d17c0f39a8a 100644
+--- a/lib_m68k/bootm.c
++++ b/lib_m68k/bootm.c
+@@ -42,10 +42,11 @@ DECLARE_GLOBAL_DATA_PTR;
+ 
+ static ulong get_sp (void);
+ static void set_clocks_in_mhz (bd_t *kbd);
++extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
+ 
+ void do_bootm_linux(cmd_tbl_t * cmdtp, int flag,
+ 		    int argc, char *argv[],
+-		    image_header_t *hdr, int verify)
++		    bootm_headers_t *images, int verify)
+ {
+ 	ulong sp, sp_limit, alloc_current;
+ 
+@@ -53,8 +54,9 @@ void do_bootm_linux(cmd_tbl_t * cmdtp, int flag,
+ 	ulong initrd_start, initrd_end;
+ 
+ 	ulong cmd_start, cmd_end;
+-	bd_t *kbd;
+-	void (*kernel) (bd_t *, ulong, ulong, ulong, ulong);
++	bd_t  *kbd;
++	ulong ep = 0;
++	void  (*kernel) (bd_t *, ulong, ulong, ulong, ulong);
+ 
+ 	/*
+ 	 * Booting a (Linux) kernel image
+@@ -78,12 +80,22 @@ void do_bootm_linux(cmd_tbl_t * cmdtp, int flag,
+ 	alloc_current = get_boot_kbd (alloc_current, &kbd);
+ 	set_clocks_in_mhz(kbd);
+ 
+-	/* find kernel */
+-	kernel =
+-	    (void (*)(bd_t *, ulong, ulong, ulong, ulong))image_get_ep (hdr);
++	/* find kernel entry point */
++	if (images->legacy_hdr_valid) {
++		ep = image_get_ep (images->legacy_hdr_os);
++#if defined(CONFIG_FIT)
++	} else if (images->fit_uname_os) {
++		fit_unsupported_reset ("M68K linux bootm");
++		do_reset (cmdtp, flag, argc, argv);
++#endif
++	} else {
++		puts ("Could not find kernel entry point!\n");
++		do_reset (cmdtp, flag, argc, argv);
++	}
++	kernel = (void (*)(bd_t *, ulong, ulong, ulong, ulong))ep;
+ 
+ 	/* find ramdisk */
+-	get_ramdisk (cmdtp, flag, argc, argv, hdr, verify,
++	get_ramdisk (cmdtp, flag, argc, argv, images, verify,
+ 			IH_ARCH_M68K, &rd_data_start, &rd_data_end);
+ 
+ 	rd_len = rd_data_end - rd_data_start;
+diff --git a/lib_microblaze/bootm.c b/lib_microblaze/bootm.c
+index bccfbe14570e34d5a5523421a8d5bbdc3786f031..1455211864027ea1aef50890e8292f01d4998ff4 100644
+--- a/lib_microblaze/bootm.c
++++ b/lib_microblaze/bootm.c
+@@ -32,14 +32,29 @@
+ 
+ DECLARE_GLOBAL_DATA_PTR;
+ 
++extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
++
+ void do_bootm_linux (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[],
+-		     image_header_t *hdr, int verify)
++		     bootm_headers_t *images, int verify)
+ {
+ 	/* First parameter is mapped to $r5 for kernel boot args */
+-	void (*theKernel) (char *);
+-	char *commandline = getenv ("bootargs");
++	void	(*theKernel) (char *);
++	char	*commandline = getenv ("bootargs");
++	ulong	ep = 0;
+ 
+-	theKernel = (void (*)(char *))image_get_ep (hdr);
++	/* find kernel entry point */
++	if (images->legacy_hdr_valid) {
++		ep = image_get_ep (images->legacy_hdr_os);
++#if defined(CONFIG_FIT)
++	} else if (images->fit_uname_os) {
++		fit_unsupported_reset ("MICROBLAZE linux bootm");
++		do_reset (cmdtp, flag, argc, argv);
++#endif
++	} else {
++		puts ("Could not find kernel entry point!\n");
++		do_reset (cmdtp, flag, argc, argv);
++	}
++	theKernel = (void (*)(char *))ep;
+ 
+ 	show_boot_progress (15);
+ 
+diff --git a/lib_nios/bootm.c b/lib_nios/bootm.c
+index 55f7e3adc14b7998a48091b08390c0e729929513..92a58f2b7fa7ac0e6fa9992000ada4d87f6ff5e8 100644
+--- a/lib_nios/bootm.c
++++ b/lib_nios/bootm.c
+@@ -29,6 +29,6 @@
+  *
+  */
+ void do_bootm_linux(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[],
+-		image__header_t *hdr, int verify)
++		bootm_headers_t *images, int verify)
+ {
+ }
+diff --git a/lib_nios2/bootm.c b/lib_nios2/bootm.c
+index cb843246b87e3c4f5ae437d5832d65bd9f482465..56d1d19dd4db60b0cfa9cefb5fe9da0b9659b4d7 100644
+--- a/lib_nios2/bootm.c
++++ b/lib_nios2/bootm.c
+@@ -25,10 +25,26 @@
+ #include <command.h>
+ #include <asm/byteorder.h>
+ 
++extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
++
+ void do_bootm_linux(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[],
+-		image_header_t *hdr, int verify)
++		bootm_headers_t *images, int verify)
+ {
+-	void (*kernel)(void) = (void (*)(void))image_get_ep (hdr);
++	ulong	ep = 0;
++
++	/* find kernel entry point */
++	if (images->legacy_hdr_valid) {
++		ep = image_get_ep (images->legacy_hdr_os);
++#if defined(CONFIG_FIT)
++	} else if (images->fit_uname_os) {
++		fit_unsupported_reset ("NIOS2 linux bootm");
++		do_reset (cmdtp, flag, argc, argv);
++#endif
++	} else {
++		puts ("Could not find kernel entry point!\n");
++		do_reset (cmdtp, flag, argc, argv);
++	}
++	void (*kernel)(void) = (void (*)(void))ep;
+ 
+ 	/* For now we assume the Microtronix linux ... which only
+ 	 * needs to be called ;-)
+diff --git a/lib_ppc/bootm.c b/lib_ppc/bootm.c
+index d2ee3dc5cca207f0296c11e30a130d972e32fdd1..a1bbfc63144a8397aae51646284109bb92e1e4d6 100644
+--- a/lib_ppc/bootm.c
++++ b/lib_ppc/bootm.c
+@@ -43,7 +43,7 @@
+ static void fdt_error (const char *msg);
+ static ulong get_fdt (ulong alloc_current, cmd_tbl_t *cmdtp, int flag,
+ 		int argc, char *argv[],
+-		image_header_t *hdr, char **of_flat_tree);
++		bootm_headers_t *images, char **of_flat_tree);
+ #endif
+ 
+ #ifdef CFG_INIT_RAM_LOCK
+@@ -59,7 +59,7 @@ static void set_clocks_in_mhz (bd_t *kbd);
+ void  __attribute__((noinline))
+ do_bootm_linux(cmd_tbl_t *cmdtp, int flag,
+ 		int	argc, char *argv[],
+-		image_header_t *hdr,
++		bootm_headers_t *images,
+ 		int	verify)
+ {
+ 	ulong	sp, sp_limit, alloc_current;
+@@ -69,6 +69,7 @@ do_bootm_linux(cmd_tbl_t *cmdtp, int flag,
+ 
+ 	ulong	cmd_start, cmd_end;
+ 	bd_t	*kbd;
++	ulong	ep = 0;
+ 	void	(*kernel)(bd_t *, ulong, ulong, ulong, ulong);
+ 
+ #if defined(CONFIG_OF_LIBFDT)
+@@ -97,11 +98,22 @@ do_bootm_linux(cmd_tbl_t *cmdtp, int flag,
+ 	alloc_current = get_boot_kbd (alloc_current, &kbd);
+ 	set_clocks_in_mhz(kbd);
+ 
+-	/* find kernel */
+-	kernel = (void (*)(bd_t *, ulong, ulong, ulong, ulong))image_get_ep (hdr);
++	/* find kernel entry point */
++	if (images->legacy_hdr_valid) {
++		ep = image_get_ep (images->legacy_hdr_os);
++#if defined(CONFIG_FIT)
++	} else if (images->fit_uname_os) {
++		fit_unsupported_reset ("PPC linux bootm");
++		do_reset (cmdtp, flag, argc, argv);
++#endif
++	} else {
++		puts ("Could not find kernel entry point!\n");
++		do_reset (cmdtp, flag, argc, argv);
++	}
++	kernel = (void (*)(bd_t *, ulong, ulong, ulong, ulong))ep;
+ 
+ 	/* find ramdisk */
+-	get_ramdisk (cmdtp, flag, argc, argv, hdr, verify,
++	get_ramdisk (cmdtp, flag, argc, argv, images, verify,
+ 			IH_ARCH_PPC, &rd_data_start, &rd_data_end);
+ 
+ 	rd_len = rd_data_end - rd_data_start;
+@@ -113,7 +125,7 @@ do_bootm_linux(cmd_tbl_t *cmdtp, int flag,
+ #if defined(CONFIG_OF_LIBFDT)
+ 	/* find flattened device tree */
+ 	alloc_current = get_fdt (alloc_current,
+-			cmdtp, flag, argc, argv, hdr, &of_flat_tree);
++			cmdtp, flag, argc, argv, images, &of_flat_tree);
+ 
+ 	/*
+ 	 * Add the chosen node if it doesn't exist, add the env and bd_t
+@@ -225,33 +237,69 @@ static void fdt_error (const char *msg)
+ static ulong get_fdt (ulong alloc_current,
+ 		cmd_tbl_t *cmdtp, int flag,
+ 		int argc, char *argv[],
+-		image_header_t *hdr, char **of_flat_tree)
++		bootm_headers_t *images, char **of_flat_tree)
+ {
++	ulong		fdt_addr;
+ 	image_header_t	*fdt_hdr;
++	char		*fdt_blob = NULL;
+ 	ulong		fdt_relocate = 0;
+-	char		*fdt = NULL;
+ 	ulong		new_alloc_current;
++	ulong		image_start, image_end;
++	ulong		load_start, load_end;
++#if defined(CONFIG_FIT)
++        void            *fit_hdr;
++        const char      *fit_uname_config = NULL;
++        const char      *fit_uname_fdt = NULL;
++	ulong		default_addr;
++#endif
+ 
+-	if(argc > 3) {
+-		fdt = (char *)simple_strtoul (argv[3], NULL, 16);
++	if (argc > 3) {
++#if defined(CONFIG_FIT)
++		/*
++		 * If the FDT blob comes from the FIT image and the FIT image
++		 * address is omitted in the command line argument, try to use
++		 * ramdisk or os FIT image address or default load address.
++		 */
++		if (images->fit_uname_rd)
++			default_addr = (ulong)images->fit_hdr_rd;
++		else if (images->fit_uname_os)
++			default_addr = (ulong)images->fit_hdr_os;
++		else
++			default_addr = load_addr;
++
++		if (fit_parse_conf (argv[3], default_addr,
++					&fdt_addr, &fit_uname_config)) {
++			debug ("*  fdt: config '%s' from image at 0x%08lx\n",
++					fit_uname_config, fdt_addr);
++		} else if (fit_parse_subimage (argv[3], default_addr,
++					&fdt_addr, &fit_uname_fdt)) {
++			debug ("*  fdt: subimage '%s' from image at 0x%08lx\n",
++					fit_uname_fdt, fdt_addr);
++		} else
++#endif
++		{
++			fdt_addr = simple_strtoul(argv[3], NULL, 16);
++			debug ("*  fdt: cmdline image address = 0x%08lx\n",
++					fdt_addr);
++		}
+ 
+-		debug ("## Checking for 'FDT'/'FDT image' at %08lx\n", fdt);
++		debug ("## Checking for 'FDT'/'FDT image' at %08lx\n",
++				fdt_addr);
+ 
+ 		/* copy from dataflash if needed */
+-		fdt = (char *)gen_get_image ((ulong)fdt);
+-		fdt_hdr = (image_header_t *)fdt;
++		fdt_addr = gen_get_image (fdt_addr);
+ 
+-		if (fdt_check_header (fdt) == 0) {
+-			printf ("## Flattened Device Tree blob at %08lx\n", fdt);
+-#ifndef CFG_NO_FLASH
+-			if (addr2info ((ulong)fdt) != NULL)
+-				fdt_relocate = 1;
+-#endif
+-		} else if (image_check_magic (fdt_hdr)) {
+-			ulong image_start, image_end;
+-			ulong load_start, load_end;
++		/*
++		 * Check if there is an FDT image at the
++		 * address provided in the second bootm argument
++		 * check image type, for FIT images get a FIT node.
++		 */
++		switch (gen_image_get_format ((void *)fdt_addr)) {
++		case IMAGE_FORMAT_LEGACY:
++			debug ("*  fdt: legacy format image\n");
+ 
+-			printf ("## Flattened Device Tree Image at %08lx\n",
++			fdt_hdr = (image_header_t *)fdt_addr;
++			printf ("## Flattened Device Tree Legacy Image at %08lx\n",
+ 					fdt_hdr);
+ 
+ 			image_print_contents (fdt_hdr);
+@@ -296,51 +344,87 @@ static ulong get_fdt (ulong alloc_current,
+ 				(void *)image_get_data (fdt_hdr),
+ 				image_get_data_size (fdt_hdr));
+ 
+-			fdt = (char *)image_get_load (fdt_hdr);
+-		} else {
+-			fdt_error ("Did not find a Flattened Device Tree");
++			fdt_blob = (char *)image_get_load (fdt_hdr);
++			break;
++#if defined(CONFIG_FIT)
++		case IMAGE_FORMAT_FIT:
++
++			/* check FDT blob vs FIT hdr */
++			if (fit_uname_config || fit_uname_fdt) {
++				/*
++				 * FIT image
++				 */
++				fit_hdr = (void *)fdt_addr;
++				debug ("*  fdt: FIT format image\n");
++				fit_unsupported_reset ("PPC fdt");
++				do_reset (cmdtp, flag, argc, argv);
++			} else {
++				/*
++				 * FDT blob
++				 */
++				printf ("## Flattened Device Tree blob at %08lx\n", fdt_blob);
++				fdt_blob = (char *)fdt_addr;
++			}
++			break;
++#endif
++		default:
++			fdt_error ("Did not find a cmdline Flattened Device Tree");
+ 			do_reset (cmdtp, flag, argc, argv);
+ 		}
+-		printf ("   Booting using the fdt at 0x%x\n",
+-				fdt);
+-	} else if (image_check_type (hdr, IH_TYPE_MULTI)) {
++
++		printf ("   Booting using the fdt blob at 0x%x\n", fdt_blob);
++
++	} else if (images->legacy_hdr_valid &&
++			image_check_type (images->legacy_hdr_os, IH_TYPE_MULTI)) {
++
+ 		ulong fdt_data, fdt_len;
+ 
++		/*
++		 * Now check if we have a legacy multi-component image,
++		 * get second entry data start address and len.
++		 */
+ 		printf ("## Flattened Device Tree from multi "
+-			"component Image at %08lX\n", (ulong)hdr);
++			"component Image at %08lX\n",
++			(ulong)images->legacy_hdr_os);
+ 
+-		image_multi_getimg (hdr, 2, &fdt_data, &fdt_len);
++		image_multi_getimg (images->legacy_hdr_os, 2, &fdt_data, &fdt_len);
+ 		if (fdt_len) {
+ 
+-			fdt = (char *)fdt_data;
+-			printf ("   Booting using the fdt at 0x%x\n", fdt);
++			fdt_blob = (char *)fdt_data;
++			printf ("   Booting using the fdt at 0x%x\n", fdt_blob);
+ 
+-#ifndef CFG_NO_FLASH
+-			/* move the blob if it is in flash (set of_relocte) */
+-			if (addr2info ((ulong)fdt) != NULL)
+-				fdt_relocate = 1;
+-#endif
+-
+-			if (fdt_check_header (fdt) != 0) {
++			if (fdt_check_header (fdt_blob) != 0) {
+ 				fdt_error ("image is not a fdt");
+ 				do_reset (cmdtp, flag, argc, argv);
+ 			}
+ 
+-			if (be32_to_cpu (fdt_totalsize (fdt)) != fdt_len) {
++			if (be32_to_cpu (fdt_totalsize (fdt_blob)) != fdt_len) {
+ 				fdt_error ("fdt size != image size");
+ 				do_reset (cmdtp, flag, argc, argv);
+ 			}
+ 		} else {
+-			debug ("   Did not find a Flattened Device Tree");
++			fdt_error ("Did not find a Flattened Device Tree "
++				"in a legacy multi-component image");
++			do_reset (cmdtp, flag, argc, argv);
+ 		}
++	} else {
++		debug ("## No Flattened Device Tree\n");
++		*of_flat_tree = NULL;
++		return alloc_current;
+ 	}
+ 
++#ifndef CFG_NO_FLASH
++	/* move the blob if it is in flash (set fdt_relocate) */
++	if (addr2info ((ulong)fdt_blob) != NULL)
++		fdt_relocate = 1;
++#endif
++
+ #ifdef CFG_BOOTMAPSZ
+ 	/*
+ 	 * The blob must be within CFG_BOOTMAPSZ,
+ 	 * so we flag it to be copied if it is not.
+ 	 */
+-	if (fdt >= (char *)CFG_BOOTMAPSZ)
++	if (fdt_blob >= (char *)CFG_BOOTMAPSZ)
+ 		fdt_relocate = 1;
+ #endif
+ 
+@@ -349,20 +433,20 @@ static ulong get_fdt (ulong alloc_current,
+ 		int err;
+ 		ulong of_start, of_len;
+ 
+-		of_len = be32_to_cpu (fdt_totalsize (fdt));
++		of_len = be32_to_cpu (fdt_totalsize (fdt_blob));
+ 
+ 		/* position on a 4K boundary before the alloc_current */
+ 		of_start  = alloc_current - of_len;
+ 		of_start &= ~(4096 - 1);	/* align on page */
+ 
+ 		debug ("## device tree at 0x%08lX ... 0x%08lX (len=%ld=0x%lX)\n",
+-			(ulong)fdt, (ulong)fdt + of_len - 1,
++			(ulong)fdt_blob, (ulong)fdt_blob + of_len - 1,
+ 			of_len, of_len);
+ 
+ 		printf ("   Loading Device Tree to %08lx, end %08lx ... ",
+ 			of_start, of_start + of_len - 1);
+ 
+-		err = fdt_open_into (fdt, (void *)of_start, of_len);
++		err = fdt_open_into (fdt_blob, (void *)of_start, of_len);
+ 		if (err != 0) {
+ 			fdt_error ("fdt move failed");
+ 			do_reset (cmdtp, flag, argc, argv);
+@@ -372,7 +456,7 @@ static ulong get_fdt (ulong alloc_current,
+ 		*of_flat_tree = (char *)of_start;
+ 		new_alloc_current = of_start;
+ 	} else {
+-		*of_flat_tree = fdt;
++		*of_flat_tree = fdt_blob;
+ 		new_alloc_current = alloc_current;
+ 	}
+ 
+diff --git a/lib_sh/bootm.c b/lib_sh/bootm.c
+index 4e5fe775de129e2fbc471be870a6001c64b9e359..55e64f51824c4624f081b6a59d9e5098a1b56ad1 100644
+--- a/lib_sh/bootm.c
++++ b/lib_sh/bootm.c
+@@ -43,6 +43,8 @@
+ 
+ #define RAMDISK_IMAGE_START_MASK        0x07FF
+ 
++extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
++
+ #ifdef CFG_DEBUG
+ static void hexdump (unsigned char *buf, int len)
+ {
+@@ -58,10 +60,24 @@ static void hexdump (unsigned char *buf, int len)
+ #endif
+ 
+ void do_bootm_linux (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[],
+-                     image_header_t *hdr, int verify)
++                     bootm_headers_t *images, int verify)
+ {
+-	char *bootargs = getenv("bootargs");
+-	void (*kernel) (void) = (void (*)(void))image_get_ep (hdr);
++	ulong	ep = 0;
++	char	*bootargs = getenv("bootargs");
++
++	/* find kernel entry point */
++	if (images->legacy_hdr_valid) {
++		ep = image_get_ep (images->legacy_hdr_os);
++#if defined(CONFIG_FIT)
++	} else if (images->fit_uname_os) {
++		fit_unsupported_reset ("SH linux bootm");
++		do_reset (cmdtp, flag, argc, argv);
++#endif
++	} else {
++		puts ("Could not find kernel entry point!\n");
++		do_reset (cmdtp, flag, argc, argv);
++	}
++	void (*kernel) (void) = (void (*)(void))ep;
+ 
+ 	/* Setup parameters */
+ 	memset(PARAM, 0, 0x1000);	/* Clear zero page */
